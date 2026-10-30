@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // True only if a doctorPatientLinks doc exists proving this doctor
+    // has (or had) a booking with this patient. That doc is written
+    // ONLY by the bookingLinkOnCreate Cloud Function (Admin SDK) —
+    // clients can never write it, so it can't be forged.
+    function isAssignedDoctor(patientId) {
+      return exists(
+        /databases/$(database)/documents/doctorPatientLinks/$(request.auth.uid + '_' + patientId)
+      );
+    }
+
+    // Users collection: unchanged from your original — every signed-in
+    // user can read profiles (needed for the doctor list), only the
+    // owner can write their own profile.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Bookings: unchanged from your original for now (not in scope of
+    // this fix — still open to any signed-in user). Flag this separately
+    // if you want it tightened too.
+    match /bookings/{bookingId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Maintained ONLY by the bookingLinkOnCreate Cloud Function.
+    // No client, patient or doctor, can read or write these directly —
+    // they exist purely so other rules can call isAssignedDoctor().
+    match /doctorPatientLinks/{linkId} {
+      allow read, write: if false;
+    }
+
+    // Medical records: unchanged from your original for now (not in
+    // scope of this fix — still open to any signed-in user).
+    match /medicalRecords/{recordId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Chats + messages: unchanged from your original for now.
+    match /chats/{chatId} {
+      allow read, write: if isSignedIn();
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // Questionnaire responses — THE FIX:
+    // - create: only the patient can create their own response (unchanged).
+    // - read: only the patient who owns it, OR a doctor who is provably
+    //   assigned to that patient via a real booking (doctorPatientLinks).
+    match /questionnaireResponses/{responseId} {
+      allow create: if isSignedIn()
+                     && request.resource.data.patientId == request.auth.uid;
+
+      allow read: if isSignedIn() && (
+        resource.data.patientId == request.auth.uid ||
+        isAssignedDoctor(resource.data.patientId)
+      );
+    }
+  }
+}

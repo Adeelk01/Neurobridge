@@ -1,0 +1,36 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "neurobridge-ce999",
+          "appId": "1:388082496297:android:9be2f85f54523bf484bd38",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "neurobridge-ce999",
+          "configurations": {
+            "android": "1:388082496297:android:9be2f85f54523bf484bd38",
+            "ios": "1:388082496297:ios:ca19cd13f50550b984bd38"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}
